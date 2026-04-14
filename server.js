@@ -3,8 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 
 import connectDB from "./config/db.js";
-import authRoutes from "./routes/authRoutes.js";
-import taskRoutes from "./routes/taskRoutes.js";
+import apiRoutes from "./routes/apiRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
 dotenv.config();
@@ -12,8 +11,13 @@ connectDB();
 
 const app = express();
 
+const envClientUrls = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
-  process.env.CLIENT_URL,
+  ...envClientUrls,
   "http://localhost:5173",
   "http://localhost:5174",
 ].filter(Boolean);
@@ -34,12 +38,32 @@ app.use(
 );
 app.use(express.json());
 
-app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "API is running" });
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "To-Do API is live",
+    version: "1.0.0",
+  });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/tasks", taskRoutes);
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "ok",
+    service: "todo-backend",
+  });
+});
+
+app.use("/api", apiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
