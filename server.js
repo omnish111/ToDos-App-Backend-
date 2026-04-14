@@ -21,6 +21,15 @@ const allowedOrigins = isProduction
   ? envClientUrls
   : [...envClientUrls, ...localDevOrigins];
 
+const isAllowedVercelOrigin = (origin) => {
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === "https:" && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+};
+
 const corsOptions = {
   origin(origin, callback) {
     // Allow non-browser tools (curl/postman) that send no origin.
@@ -29,6 +38,11 @@ const corsOptions = {
     const normalizedOrigin = origin.replace(/\/$/, "");
 
     if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    // Accept Vercel-hosted frontend domains in production deployments.
+    if (isProduction && isAllowedVercelOrigin(normalizedOrigin)) {
       return callback(null, true);
     }
 
