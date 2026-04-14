@@ -7,7 +7,6 @@ import apiRoutes from "./routes/apiRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
 dotenv.config();
-connectDB();
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -75,6 +74,53 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+let server;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    server = app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error(`Startup failed: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Promise Rejection:", reason);
+
+  if (server) {
+    server.close(() => process.exit(1));
+    return;
+  }
+
+  process.exit(1);
 });
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+
+  if (server) {
+    server.close(() => process.exit(1));
+    return;
+  }
+
+  process.exit(1);
+});
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+
+  if (server) {
+    server.close(() => process.exit(0));
+    return;
+  }
+
+  process.exit(0);
+});
+
+startServer();

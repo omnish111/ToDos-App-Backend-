@@ -1,20 +1,33 @@
 import mongoose from "mongoose";
 
+const sanitizeMongoUri = (uri = "") =>
+  uri.replace(/(mongodb\+srv:\/\/[^:]+:)([^@]+)(@)/, "$1****$3");
+
 const connectDB = async () => {
+  const mongoUri = (
+    process.env.MONGODB_URI ||
+    process.env.MONGO_URI ||
+    ""
+  ).trim();
+
+  if (!mongoUri) {
+    throw new Error(
+      "MongoDB URI is missing. Set MONGODB_URI (or MONGO_URI) in environment variables.",
+    );
+  }
+
   try {
-    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
 
-    if (!mongoUri) {
-      throw new Error(
-        "MONGODB_URI is missing. Create backend/.env and set MONGODB_URI.",
-      );
-    }
-
-    await mongoose.connect(mongoUri);
-    console.log("MongoDB connected");
+    console.log(`MongoDB connected (${sanitizeMongoUri(mongoUri)})`);
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
-    process.exit(1);
+    console.error(
+      `MongoDB connection failed (${sanitizeMongoUri(mongoUri)}): ${error.message}`,
+    );
+    throw error;
   }
 };
 
