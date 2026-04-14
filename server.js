@@ -13,29 +13,39 @@ const app = express();
 
 const envClientUrls = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
   .split(",")
-  .map((url) => url.trim())
+  .map((url) => url.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
 const allowedOrigins = [
   ...envClientUrls,
   "http://localhost:5173",
   "http://localhost:5174",
-].filter(Boolean);
+].map((origin) => origin.replace(/\/$/, ""));
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      // Allow non-browser tools (curl/postman) that send no origin.
-      if (!origin) return callback(null, true);
+const vercelPreviewOriginPattern = /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/;
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin(origin, callback) {
+    // Allow non-browser tools (curl/postman) that send no origin.
+    if (!origin) return callback(null, true);
 
-      return callback(new Error("CORS blocked for this origin"));
-    },
-  }),
-);
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const isAllowedOrigin = allowedOrigins.includes(normalizedOrigin);
+    const isVercelPreview = vercelPreviewOriginPattern.test(normalizedOrigin);
+
+    if (isAllowedOrigin || isVercelPreview) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 app.get("/", (req, res) => {
