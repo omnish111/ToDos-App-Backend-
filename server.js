@@ -10,19 +10,17 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
 
 const envClientUrls = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
   .split(",")
   .map((url) => url.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
-const allowedOrigins = [
-  ...envClientUrls,
-  "http://localhost:5173",
-  "http://localhost:5174",
-].map((origin) => origin.replace(/\/$/, ""));
-
-const vercelPreviewOriginPattern = /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/;
+const localDevOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = isProduction
+  ? envClientUrls
+  : [...envClientUrls, ...localDevOrigins];
 
 const corsOptions = {
   origin(origin, callback) {
@@ -30,10 +28,8 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = origin.replace(/\/$/, "");
-    const isAllowedOrigin = allowedOrigins.includes(normalizedOrigin);
-    const isVercelPreview = vercelPreviewOriginPattern.test(normalizedOrigin);
 
-    if (isAllowedOrigin || isVercelPreview) {
+    if (allowedOrigins.includes(normalizedOrigin)) {
       return callback(null, true);
     }
 
