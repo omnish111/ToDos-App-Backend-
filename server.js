@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
@@ -55,6 +56,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+app.use(compression());
 app.use(express.json());
 
 app.get("/", (req, res) => {
